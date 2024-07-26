@@ -300,9 +300,7 @@ CATCH_RETURN()
         const til::point bufferOrigin{ -offsetX, -offsetY };
         const auto dr = _api.dirtyRect.to_origin(bufferOrigin);
 
-        const auto hiBeg = std::lower_bound(highlights.begin(), highlights.end(), dr.top, [](const auto& ps, const auto& drTop) { return ps.end.y < drTop; });
-        const auto hiEnd = std::upper_bound(hiBeg, highlights.end(), dr.bottom, [](const auto& drBottom, const auto& ps) { return drBottom < ps.start.y; });
-        _api.searchHighlights = { hiBeg, hiEnd };
+        _api.searchHighlights = til::point_span_subspan_within_rect(highlights, dr);
 
         // do the same for the focused search highlight
         if (info.searchHighlightFocused)
