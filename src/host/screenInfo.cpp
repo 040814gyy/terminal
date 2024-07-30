@@ -1706,39 +1706,40 @@ void SCREEN_INFORMATION::SetCursorDBMode(const bool DoubleCursor)
     return STATUS_SUCCESS;
 }
 
-void SCREEN_INFORMATION::MakeCursorVisible(const til::point CursorPosition)
+void SCREEN_INFORMATION::MakeCursorVisible(til::point cursor)
 {
-    til::point WindowOrigin;
+    const auto viewportOrigin = _viewport.Origin();
+    const auto viewportSize = _viewport.Dimensions();
+    const auto bufferSize = _textBuffer->GetSize().Dimensions();
+    auto origin = viewportOrigin;
 
-    if (CursorPosition.x > _viewport.RightInclusive())
-    {
-        WindowOrigin.x = CursorPosition.x - _viewport.RightInclusive();
-    }
-    else if (CursorPosition.x < _viewport.Left())
-    {
-        WindowOrigin.x = CursorPosition.x - _viewport.Left();
-    }
-    else
-    {
-        WindowOrigin.x = 0;
-    }
+    // Ensure the given position is in bounds.
+    cursor.x = std::clamp(cursor.x, 0, bufferSize.width - 1);
+    cursor.y = std::clamp(cursor.y, 0, bufferSize.height - 1);
 
-    if (CursorPosition.y > _viewport.BottomInclusive())
+    // If the cursor is horizontally outside the viewport, snap the
+    // viewport to the nearest multiple of half the viewport width.
+    if (cursor.x < origin.x || cursor.x >= (origin.x + viewportSize.width))
     {
-        WindowOrigin.y = CursorPosition.y - _viewport.BottomInclusive();
-    }
-    else if (CursorPosition.y < _viewport.Top())
-    {
-        WindowOrigin.y = CursorPosition.y - _viewport.Top();
-    }
-    else
-    {
-        WindowOrigin.y = 0;
+        const auto div = viewportSize.width / 2;
+        // We want our viewport to be centered around the cursor (= "half-width" offset).
+        // Since the origin is the left edge, we must subtract a half-width from the cursor.
+        origin.x = cursor.x - div;
+        // Round down to the nearest multiple of the viewport width.
+        // This also works if origin.x is negative, because the "modulo operator"
+        // is not a modulo operator, it's a remainder operator. The remainder of a
+        // negative number is negative and so origin.x cannot end up being less than 0.
+        origin.x -= origin.x % div;
     }
 
-    if (WindowOrigin.x != 0 || WindowOrigin.y != 0)
+    // Shift the viewport up if the cursor is above.
+    origin.y = std::min(origin.y, cursor.y);
+    // Shift the viewport down if it's below.
+    origin.y = std::max(origin.y, cursor.y - (viewportSize.height - 1));
+
+    if (origin != viewportOrigin)
     {
-        LOG_IF_FAILED(SetViewportOrigin(false, WindowOrigin, false));
+        std::ignore = SetViewportOrigin(true, origin, false);
     }
 }
 
