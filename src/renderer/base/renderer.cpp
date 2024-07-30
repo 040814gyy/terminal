@@ -274,7 +274,7 @@ void Renderer::TriggerRedraw(const Viewport& region)
 // - <none>
 void Renderer::TriggerRedraw(const til::point* const pcoord)
 {
-    TriggerRedraw(Viewport::FromCoord(*pcoord)); // this will notify to paint if we need it.
+    TriggerRedraw(Viewport::FromDimensions(*pcoord, { 1, 1 })); // this will notify to paint if we need it.
 }
 
 // Routine Description:
@@ -435,8 +435,9 @@ bool Renderer::_CheckViewportAndScroll()
         auto coordCursor = _currentCursorOptions.coordCursor;
 
         // `coordCursor` was stored in viewport-relative while `view` is in absolute coordinates.
-        // --> Turn it back into the absolute coordinates with the help of the old viewport.
-        coordCursor.y += srOldViewport.top;
+        // --> Turn it back into the absolute coordinates with the help of the viewport.
+        // We have to use the new viewport, because _ScrollPreviousSelection adjusts the cursor position to match the new one.
+        coordCursor.y += srNewViewport.top;
 
         // Note that we allow the X coordinate to be outside the left border by 1 position,
         // because the cursor could still be visible if the focused character is double width.
@@ -835,6 +836,13 @@ void Renderer::_PaintBufferOutput(_In_ IRenderEngine* const pEngine)
 
             // Ask the helper to paint through this specific line.
             _PaintBufferOutputHelper(pEngine, it, screenPosition, lineWrapped);
+
+            // Paint any image content on top of the text.
+            const auto imageSlice = buffer.GetRowByOffset(row).GetImageSlice();
+            if (imageSlice) [[unlikely]]
+            {
+                LOG_IF_FAILED(pEngine->PaintImageSlice(*imageSlice, screenPosition.y, view.Left()));
+            }
         }
     }
 }
@@ -1184,8 +1192,9 @@ void Renderer::_invalidateCurrentCursor() const
 
     const auto lineRendition = _currentCursorOptions.lineRendition;
     const auto cursorWidth = _currentCursorOptions.fIsDoubleWidth ? 2 : 1;
+    const auto x = coord.x - _viewport.Left();
 
-    til::rect rect{ coord.x, coord.y, coord.x + cursorWidth, coord.y + 1 };
+    til::rect rect{ x, coord.y, x + cursorWidth, coord.y + 1 };
     rect = BufferToScreenLine(rect, lineRendition);
 
     if (view.TrimToViewport(&rect))
