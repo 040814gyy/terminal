@@ -193,7 +193,8 @@ public:
     void SetCursorDBMode(const bool DoubleCursor);
     [[nodiscard]] NTSTATUS SetCursorPosition(const til::point Position, const bool TurnOn);
 
-    void MakeCursorVisible(const til::point CursorPosition);
+    void MakeLocationVisible(til::point position);
+    void MakeLocationVisibleWithSnap(til::point position);
 
     [[nodiscard]] NTSTATUS UseAlternateScreenBuffer(const TextAttribute& initAttributes);
     void UseMainScreenBuffer();

@@ -216,7 +216,7 @@ void Selection::ExtendSelection(_In_ til::point coordBufferPos)
         }
 
         // scroll if necessary to make cursor visible.
-        screenInfo.MakeCursorVisible(coordBufferPos);
+        screenInfo.MakeLocationVisible(coordBufferPos);
 
         _dwSelectionFlags |= CONSOLE_SELECTION_NOT_EMPTY;
         _srSelectionRect.left = _srSelectionRect.right = _coordSelectionAnchor.x;
@@ -227,7 +227,7 @@ void Selection::ExtendSelection(_In_ til::point coordBufferPos)
     else
     {
         // scroll if necessary to make cursor visible.
-        screenInfo.MakeCursorVisible(coordBufferPos);
+        screenInfo.MakeLocationVisible(coordBufferPos);
     }
 
     // remember previous selection rect

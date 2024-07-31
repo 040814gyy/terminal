@@ -1534,7 +1534,7 @@ void SCREEN_INFORMATION::ClipToScreenBuffer(_Inout_ til::inclusive_rect* const p
 
 void SCREEN_INFORMATION::MakeCurrentCursorVisible()
 {
-    MakeCursorVisible(_textBuffer->GetCursor().GetPosition());
+    MakeLocationVisibleWithSnap(_textBuffer->GetCursor().GetPosition());
 }
 
 static constexpr bool IsInputKey(WORD vkey)
@@ -1706,7 +1706,7 @@ void SCREEN_INFORMATION::SetCursorDBMode(const bool DoubleCursor)
     return STATUS_SUCCESS;
 }
 
-void SCREEN_INFORMATION::MakeCursorVisible(til::point cursor)
+void SCREEN_INFORMATION::MakeLocationVisible(til::point position)
 {
     const auto viewportOrigin = _viewport.Origin();
     const auto viewportSize = _viewport.Dimensions();
@@ -1714,17 +1714,40 @@ void SCREEN_INFORMATION::MakeCursorVisible(til::point cursor)
     auto origin = viewportOrigin;
 
     // Ensure the given position is in bounds.
-    cursor.x = std::clamp(cursor.x, 0, bufferSize.width - 1);
-    cursor.y = std::clamp(cursor.y, 0, bufferSize.height - 1);
+    position.x = std::clamp(position.x, 0, bufferSize.width - 1);
+    position.y = std::clamp(position.y, 0, bufferSize.height - 1);
 
-    // If the cursor is horizontally outside the viewport, snap the
+    origin.x = std::min(origin.x, position.x); // shift left if left
+    origin.x = std::max(origin.x, position.x - (viewportSize.width - 1)); // shift right if right
+
+    origin.y = std::min(origin.y, position.y); // shift up if above
+    origin.y = std::max(origin.y, position.y - (viewportSize.height - 1)); // shift down if below
+
+    if (origin != viewportOrigin)
+    {
+        std::ignore = SetViewportOrigin(true, origin, false);
+    }
+}
+
+void SCREEN_INFORMATION::MakeLocationVisibleWithSnap(til::point position)
+{
+    const auto viewportOrigin = _viewport.Origin();
+    const auto viewportSize = _viewport.Dimensions();
+    const auto bufferSize = _textBuffer->GetSize().Dimensions();
+    auto origin = viewportOrigin;
+
+    // Ensure the given position is in bounds.
+    position.x = std::clamp(position.x, 0, bufferSize.width - 1);
+    position.y = std::clamp(position.y, 0, bufferSize.height - 1);
+
+    // If the position is horizontally outside the viewport, snap the
     // viewport to the nearest multiple of half the viewport width.
-    if (cursor.x < origin.x || cursor.x >= (origin.x + viewportSize.width))
+    if (position.x < origin.x || position.x >= (origin.x + viewportSize.width))
     {
         const auto div = viewportSize.width / 2;
-        // We want our viewport to be centered around the cursor (= "half-width" offset).
-        // Since the origin is the left edge, we must subtract a half-width from the cursor.
-        origin.x = cursor.x - div;
+        // We want our viewport to be centered around the position (= "half-width" offset).
+        // Since the origin is the left edge, we must subtract a half-width from the position.
+        origin.x = position.x - div;
         // Round down to the nearest multiple of the viewport width.
         // This also works if origin.x is negative, because the "modulo operator"
         // is not a modulo operator, it's a remainder operator. The remainder of a
@@ -1732,10 +1755,8 @@ void SCREEN_INFORMATION::MakeCursorVisible(til::point cursor)
         origin.x -= origin.x % div;
     }
 
-    // Shift the viewport up if the cursor is above.
-    origin.y = std::min(origin.y, cursor.y);
-    // Shift the viewport down if it's below.
-    origin.y = std::max(origin.y, cursor.y - (viewportSize.height - 1));
+    origin.y = std::min(origin.y, position.y); // shift up if above
+    origin.y = std::max(origin.y, position.y - (viewportSize.height - 1)); // shift down if below
 
     if (origin != viewportOrigin)
     {
