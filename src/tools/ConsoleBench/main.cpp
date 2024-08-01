@@ -10,9 +10,9 @@
 #define ENABLE_TEST_OUTPUT_WRITE 1
 #define ENABLE_TEST_OUTPUT_SCROLL 1
 #define ENABLE_TEST_OUTPUT_FILL 1
-#define ENABLE_TEST_OUTPUT_READ 1
-#define ENABLE_TEST_INPUT 1
-#define ENABLE_TEST_CLIPBOARD 1
+#define ENABLE_TEST_OUTPUT_READ 0
+#define ENABLE_TEST_INPUT 0
+#define ENABLE_TEST_CLIPBOARD 0
 
 using Measurements = std::span<int32_t>;
 using MeasurementsPerBenchmark = std::span<Measurements>;

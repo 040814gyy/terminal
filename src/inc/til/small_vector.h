@@ -871,7 +871,7 @@ namespace til
 
             // An optimization for the most common vector type which is trivially constructible, destructible and copyable.
             // This allows us to drop exception handlers (= no need to push onto the stack) and replace two moves with just one.
-            if constexpr (noexcept(func(begin())) && std::is_trivial_v<T>)
+            if constexpr (noexcept(func(begin())) && std::is_trivially_copyable_v<T>)
             {
                 _size = new_size;
 
