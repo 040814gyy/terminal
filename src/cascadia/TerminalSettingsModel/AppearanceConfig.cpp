@@ -90,25 +90,16 @@ Json::Value AppearanceConfig::ToJson() const
 void AppearanceConfig::LayerJson(const Json::Value& json)
 {
     JsonUtils::GetValueForKey(json, ForegroundKey, _Foreground);
-    if (_Foreground.has_value())
-    {
-        _logSettingSet(ForegroundKey, _Foreground.value());
-    }
+    _logSettingValIfSet(json, ForegroundKey);
+
     JsonUtils::GetValueForKey(json, BackgroundKey, _Background);
-    if (_Background.has_value())
-    {
-        _logSettingSet(BackgroundKey, _Background.value());
-    }
+    _logSettingValIfSet(json, BackgroundKey);
+
     JsonUtils::GetValueForKey(json, SelectionBackgroundKey, _SelectionBackground);
-    if (_SelectionBackground.has_value())
-    {
-        _logSettingSet(SelectionBackgroundKey, _SelectionBackground.value());
-    }
+    _logSettingValIfSet(json, SelectionBackgroundKey);
+
     JsonUtils::GetValueForKey(json, CursorColorKey, _CursorColor);
-    if (_CursorColor.has_value())
-    {
-        _logSettingSet(CursorColorKey, _CursorColor.value());
-    }
+    _logSettingValIfSet(json, CursorColorKey);
 
     JsonUtils::GetValueForKey(json, LegacyAcrylicTransparencyKey, _Opacity);
     JsonUtils::GetValueForKey(json, OpacityKey, _Opacity, JsonUtils::OptionalConverter<float, IntAsFloatPercentConversionTrait>{});
@@ -117,28 +108,27 @@ void AppearanceConfig::LayerJson(const Json::Value& json)
         _logSettingSet(OpacityKey, _Opacity.value());
     }
 
-    // TODO CARLOS: how do we want to track this? Do we want to track the color scheme name?
     if (json["colorScheme"].isString())
     {
         // to make the UI happy, set ColorSchemeName.
         JsonUtils::GetValueForKey(json, ColorSchemeKey, _DarkColorSchemeName);
         _LightColorSchemeName = _DarkColorSchemeName;
+        _logSettingValIfSet(json, ColorSchemeKey);
     }
     else if (json["colorScheme"].isObject())
     {
         // to make the UI happy, set ColorSchemeName to whatever the dark value is.
         JsonUtils::GetValueForKey(json["colorScheme"], "dark", _DarkColorSchemeName);
         JsonUtils::GetValueForKey(json["colorScheme"], "light", _LightColorSchemeName);
+
+        _logSettingSet("colorScheme.dark", _DarkColorSchemeName);
+        _logSettingSet("colorScheme.light", _DarkColorSchemeName);
     }
 
 #define APPEARANCE_SETTINGS_LAYER_JSON(type, name, jsonKey, ...) \
-    {                                                            \
-        JsonUtils::GetValueForKey(json, jsonKey, _##name);       \
-        if (_##name.has_value())                                 \
-        {                                                        \
-            _logSettingSet(jsonKey, _##name.value());            \
-        }                                                        \
-    }                                                            \
+    JsonUtils::GetValueForKey(json, jsonKey, _##name);           \
+    _logSettingValIfSet(json, jsonKey);
+
     MTSM_APPEARANCE_SETTINGS(APPEARANCE_SETTINGS_LAYER_JSON)
 #undef APPEARANCE_SETTINGS_LAYER_JSON
 }
@@ -185,69 +175,26 @@ winrt::hstring AppearanceConfig::ExpandedBackgroundImagePath()
     }
 }
 
-winrt::hstring _convertVal(const winrt::Microsoft::Terminal::Core::CursorStyle val)
-{
-    OutputDebugString(L"CursorStyle\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
-
-winrt::hstring _convertVal(const winrt::Windows::UI::Xaml::Media::Stretch val)
-{
-    OutputDebugString(L"BackgroundImageStretchMode\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
-
-winrt::hstring _convertVal(const winrt::Microsoft::Terminal::Settings::Model::ConvergedAlignment val)
-{
-    OutputDebugString(L"BackgroundImageAlignment\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
-
-winrt::hstring _convertVal(const winrt::Microsoft::Terminal::Settings::Model::IntenseStyle val)
-{
-    OutputDebugString(L"IntenseTextStyle\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
-
-winrt::hstring _convertVal(const winrt::Microsoft::Terminal::Core::AdjustTextMode val)
-{
-    OutputDebugString(L"AdjustIndistinguishableColors\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
-
-winrt::hstring _convertVal(const std::optional<winrt::Microsoft::Terminal::Core::Color> val)
-{
-    // TODO CARLOS: test this one specifically
-    //  - std::nullopt -> "null"
-    //  - color -> something
-    OutputDebugString(L"optional<Color>\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
-
-winrt::hstring _convertVal(auto& val)
-{
-    OutputDebugString(L"auto\n");
-    return winrt::to_hstring(val);
-}
-
 void AppearanceConfig::_logSettingSet(std::string_view setting, auto& value)
 {
     OutputDebugStringA(setting.data());
     OutputDebugStringA(" - ");
     std::wstring val{ _convertVal(value).c_str() };
-    _changeLog.insert_or_assign(setting, std::wstring_view{ val });
+    _changeLog.insert_or_assign(setting, std::string_view{ til::u16u8(val) });
 }
 
 void AppearanceConfig::_logSettingValIfSet(const Json::Value& json, std::string_view setting)
 {
     if (auto found{ json.find(&*setting.cbegin(), (&*setting.cbegin()) + setting.size()) })
     {
-        _changeLog.insert_or_assign(setting, std::wstring_view{ til::u8u16(found->asString()) });
+        _changeLog.insert_or_assign(setting, std::string_view{ found->asString() });
+    }
+}
+
+void AppearanceConfig::LogSettingChanges(std::vector<std::pair<std::string_view, std::string_view>>& changes) const
+{
+    for (const auto& [key, val] : _changeLog)
+    {
+        changes.emplace_back(std::make_pair(key, val));
     }
 }

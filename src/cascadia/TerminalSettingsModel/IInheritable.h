@@ -201,7 +201,7 @@ public:                                                                         
     {                                                                             \
         if (name() != value)                                                      \
         {                                                                         \
-            _logSettingSet(jsonKey, value);                                       \
+            _logSettingSet(jsonKey);                                              \
         }                                                                         \
         _##name = value;                                                          \
     }

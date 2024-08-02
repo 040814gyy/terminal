@@ -481,6 +481,32 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
 
     void MainPage::SaveButton_Click(const IInspectable& /*sender*/, const RoutedEventArgs& /*args*/)
     {
+
+
+//#define GLOBAL_SETTINGS_COMPARE(type, name, jsonKey, ...) 
+//    if (_settingsClone.GlobalSettings().Has##name())
+//    {
+//        if (!_settingsSource.GlobalSettings().Has##name())
+//        { 
+//            /* Change detected!; We didn't have a value set before. */
+//        }
+//        else if (_settingsSource.GlobalSettings().name() != _settingsClone.GlobalSettings().name())
+//        { 
+//            /* Change detected! */
+//        }
+//    }
+//#undef GLOBAL_SETTINGS_COMPARE
+//
+//#define PROFILE_SETTINGS_COMPARE(type, name, jsonKey, ...)
+//
+//#undef PROFILE_SETTINGS_COMPARE
+//
+//    for (const auto& profile : _settingsClone.AllProfiles())
+//    {
+//        _settingsSource.
+//    }
+
+
         _settingsClone.WriteSettingsToDisk();
     }
 

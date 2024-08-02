@@ -83,14 +83,10 @@ void FontConfig::LayerJson(const Json::Value& json)
     {
         // A font object is defined, use that
         const auto fontInfoJson = json[JsonKey(FontInfoKey)];
-#define FONT_SETTINGS_LAYER_JSON(type, name, jsonKey, ...)         \
-    {                                                              \
-        JsonUtils::GetValueForKey(fontInfoJson, jsonKey, _##name); \
-        if (_##name.has_value())                                   \
-        {                                                          \
-            _logSettingSet(jsonKey, _##name.value());              \
-        }                                                          \
-    }
+#define FONT_SETTINGS_LAYER_JSON(type, name, jsonKey, ...)     \
+    JsonUtils::GetValueForKey(fontInfoJson, jsonKey, _##name); \
+    _logSettingValIfSet(fontInfoJson, jsonKey);
+
         MTSM_FONT_SETTINGS(FONT_SETTINGS_LAYER_JSON)
 #undef FONT_SETTINGS_LAYER_JSON
     }
@@ -98,67 +94,70 @@ void FontConfig::LayerJson(const Json::Value& json)
     {
         // No font object is defined
         JsonUtils::GetValueForKey(json, LegacyFontFaceKey, _FontFace);
-        if (_FontFace.has_value())
-        {
-            _logSettingSet(LegacyFontFaceKey, _FontFace.value());
-        }
+        _logSettingValIfSet(json, LegacyFontFaceKey);
+
         JsonUtils::GetValueForKey(json, LegacyFontSizeKey, _FontSize);
-        if (_FontSize.has_value())
-        {
-            _logSettingSet(LegacyFontSizeKey, _FontSize.value());
-        }
+        _logSettingValIfSet(json, LegacyFontSizeKey);
+
         JsonUtils::GetValueForKey(json, LegacyFontWeightKey, _FontWeight);
-        if (_FontWeight.has_value())
-        {
-            _logSettingSet(LegacyFontWeightKey, _FontWeight.value());
-        }
+        _logSettingValIfSet(json, LegacyFontWeightKey);
     }
 }
 
 winrt::Microsoft::Terminal::Settings::Model::Profile FontConfig::SourceProfile()
 {
     return _sourceProfile.get();
-}
 
-winrt::hstring _convertVal(const winrt::Windows::UI::Text::FontWeight val)
-{
-    OutputDebugString(L"FontWeight\n");
-    JsonUtils::ConversionTrait<decltype(val)> converter{};
-    return winrt::to_hstring(converter.ToJson(val).asString());
-}
 
-void _logMap(const winrt::Windows::Foundation::Collections::IMap<winrt::hstring, float>& val, std::map<std::wstring_view, std::wstring_view>& log)
-{
-    for (const auto& [mapKey, mapVal] : val)
-    {
-        log.insert_or_assign(std::wstring_view{ mapKey.c_str() }, std::to_wstring(mapVal));
-    }
-}
+//void FontConfig::_logSettingSet(std::string_view setting, winrt::Windows::Foundation::Collections::IMap<winrt::hstring, float>& value)
+//{
+//    OutputDebugStringA(setting.data());
+//    OutputDebugStringA(" - ");
+//
+//    for (const auto& [mapKey, mapVal] : value)
+//    {
+//        std::string key{ setting };
+//        key.append("." + til::u16u8(mapKey.c_str()));
+//
+//        _changeLog.insert_or_assign(key, std::to_string(mapVal));
+//    }
+//}
 
-winrt::hstring _convertVal(auto& val)
-{
-    OutputDebugString(L"auto\n");
-    return winrt::to_hstring(val);
-}
-
-void FontConfig::_logSettingSet(std::string_view setting, winrt::Windows::Foundation::Collections::IMap<winrt::hstring, float>& value)
-{
-    OutputDebugStringA(setting.data());
-    OutputDebugStringA(" - ");
-    if (setting == "axes")
-    {
-        _logMap(value, _changeLogAxes);
-    }
-    else if (setting == "features")
-    {
-        _logMap(value, _changeLogFeatures);
-    }
-}
-
-void FontConfig::_logSettingSet(std::string_view setting, auto& value)
+void FontConfig::_logSettingSet(std::string_view setting)
 {
     OutputDebugStringA(setting.data());
     OutputDebugStringA(" - ");
     std::wstring val{ _convertVal(value).c_str() };
     _changeLog.insert_or_assign(setting, std::wstring_view{ val });
+}
+
+void FontConfig::_logSettingValIfSet(const Json::Value& json, std::string_view setting)
+{
+    if (auto found{ json.find(&*setting.cbegin(), (&*setting.cbegin()) + setting.size()) })
+    {
+        if (setting == "axes" || setting == "features")
+        {
+            for (auto it = json.begin(), end = json.end(); it != end; ++it)
+            {
+                std::string key{ setting };
+                key.append("." + it.name());
+
+                _changeLog.insert_or_assign(key, std::string_view{ it->asString() });
+            }
+        }
+        else
+        {
+            _changeLog.insert_or_assign(setting, std::string_view{ found->asString() });
+        }
+    }
+}
+
+void FontConfig::LogSettingChanges(std::vector<std::pair<std::string_view, std::string_view>>& changes) const
+{
+    for (const auto& [key, val] : _changeLog)
+    {
+        std::string maskedKey{ "font." };
+        maskedKey.append(key);
+        changes.emplace_back(std::make_pair(maskedKey, val));
+    }
 }

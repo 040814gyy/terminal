@@ -1136,3 +1136,49 @@ void CascadiaSettings::ExpandCommands()
 {
     _globals->ExpandCommands(ActiveProfiles().GetView(), GlobalSettings().ColorSchemes());
 }
+
+void CascadiaSettings::LogSettingChanges() const
+{
+    // Only do this if we're actually being sampled
+    if (!TraceLoggingProviderEnabled(g_hSettingsModelProvider, 0, MICROSOFT_KEYWORD_MEASURES))
+    {
+        return;
+    }
+
+    // aggregate setting changes
+    std::vector<std::string_view> changes;
+    _globals->LogSettingChanges(changes);
+
+    for (const auto& profile : _allProfiles)
+    {
+        winrt::get_self<Profile>(profile)->LogSettingChanges(changes);
+    }
+
+    // TODO CARLOS:
+    // - actions
+    // - themes
+
+    // report changes
+    for (const auto& [key, val] : changes)
+    {
+        if (val.empty())
+        {
+            TraceLoggingWrite(g_hSettingsModelProvider,
+                              "SettingsChanged",
+                              TraceLoggingDescription("Event emitted when settings change"),
+                              TraceLoggingValue(key.data()),
+                              TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+                              TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage));
+        }
+        else
+        {
+            // TODO CARLOS: idk how to have the key be put in the trace event
+            TraceLoggingWrite(g_hSettingsModelProvider,
+                              "SettingsChanged",
+                              TraceLoggingDescription("Event emitted when settings change"),
+                              TraceLoggingValue(val.data(), "key"),
+                              TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+                              TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage));
+        }
+    }
+}

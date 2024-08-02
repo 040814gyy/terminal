@@ -150,6 +150,8 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
 
         void ExpandCommands();
 
+        void LogSettingChanges() const;
+
     private:
         static const std::filesystem::path& _settingsPath();
         static const std::filesystem::path& _releaseSettingsPath();
