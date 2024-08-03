@@ -475,8 +475,6 @@ namespace Microsoft::Console::Render::Atlas
             bitmap.active = false;
             gridLineRanges.clear();
             lineRendition = LineRendition::SingleWidth;
-            selectionFrom = 0;
-            selectionTo = 0;
             dirtyTop = y * cellHeight;
             dirtyBottom = dirtyTop + cellHeight;
         }
@@ -496,8 +494,6 @@ namespace Microsoft::Console::Render::Atlas
         Bitmap bitmap;
         std::vector<GridLineRange> gridLineRanges;
         LineRendition lineRendition = LineRendition::SingleWidth;
-        u16 selectionFrom = 0;
-        u16 selectionTo = 0;
         til::CoordType dirtyTop = 0;
         til::CoordType dirtyBottom = 0;
     };
