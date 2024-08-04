@@ -393,7 +393,8 @@ namespace Microsoft::Console::Render::Atlas
     struct MiscellaneousSettings
     {
         u32 backgroundColor = 0;
-        u32 selectionColor = 0x7fffffff;
+        u32 selectionColor = 0xffffffff;
+        u32 selectionForeground = 0xff000000;
         std::wstring customPixelShaderPath;
         std::wstring customPixelShaderImagePath;
         bool useRetroTerminalEffect = false;
